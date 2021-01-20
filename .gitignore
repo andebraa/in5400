@@ -2,3 +2,7 @@
 */.csv
 *.pdf 
 *.ipybn
+*/*.pdf
+*/*.ipybn
+*.zip
+*/*.zip
