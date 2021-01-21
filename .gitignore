@@ -3,6 +3,6 @@
 *.pdf 
 *.ipybn
 */*.pdf
-*/*.ipybn
+*/*.ipynb
 *.zip
 */*.zip
