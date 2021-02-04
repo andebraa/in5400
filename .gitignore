@@ -1,5 +1,6 @@
-
-*/.csv
+*/*.gz
+/data/*
+*/*.csv
 *.pdf 
 *.ipybn
 */*.pdf
