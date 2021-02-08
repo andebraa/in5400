@@ -1,5 +1,6 @@
 */*.gz
 /data/*
+*/data/*
 */*.csv
 *.pdf 
 *.ipybn
