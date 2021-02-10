@@ -163,6 +163,7 @@ def gradient_magnitude(img):
     print(np.shape(gm))
     gm_max = max_filter(gm)
     return gm_max
+
 def max_filter(image):
     """
     Blurs a MxNxC image with an average filter (box filter) with kernel size of 11.
@@ -177,8 +178,7 @@ def max_filter(image):
     c = image.shape[2]
     for i in range(m-mk +1):
         for j in range(n-nk +1):
-            for k in range(c):
-                out[i,j,k] = np.max(image[i:i+mk, j:j+nk, k])
+            out[i,j,k] = np.max(image[i:i+mk, j:j+nk, :])
     return out
 
 image = np.arange(1,26).reshape(5,5,1)
