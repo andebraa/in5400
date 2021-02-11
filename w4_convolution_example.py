@@ -46,59 +46,59 @@ def convolution(image, kernel):
 
 
 # Check that your implementations provide the same result for a small 2D image.
-f1 = np.arange(4)
-f2 = np.arange(5)
-f = f1[:, np.newaxis, np.newaxis] + f2[np.newaxis, :, np.newaxis]
-print(f[:,:,0])
-print(f.shape)
-
-h = np.arange(9).reshape(3, 3)
-print(h)
-print(h.shape)
-
-out1 = convolution_loops(f, h)
-print(out1[:,:,0])
-
-out2 = convolution(f, h)
-print(out2[:,:,0])
+# f1 = np.arange(4)
+# f2 = np.arange(5)
+# f = f1[:, np.newaxis, np.newaxis] + f2[np.newaxis, :, np.newaxis]
+# print(f[:,:,0])
+# print(f.shape)
+#
+# h = np.arange(9).reshape(3, 3)
+# print(h)
+# print(h.shape)
+#
+# out1 = convolution_loops(f, h)
+# print(out1[:,:,0])
+#
+# out2 = convolution(f, h)
+# print(out2[:,:,0])
 
 
 # Check that your implementations filter an image correctly.
-img = imageio.imread('images/cat.png').astype(np.float64)
-
-kernel = np.arange(25).reshape((5, 5))
-
-start = time.time()
-out1 = convolution_loops(img, kernel)
-print('Calculation time with inner loops:', time.time()-start, 'sec')
-
-start= time.time()
-out2 = convolution(img, kernel)
-print('Calculation time without inner loops:', time.time()-start, 'sec')
-
-out1 -= out1.min()
-out1 /= out1.max()
-out1 *= 255
-out1 = out1.astype(np.uint8)
-
-out2 -= out2.min()
-out2 /= out2.max()
-out2 *= 255
-out2 = out2.astype(np.uint8)
-
-correct = imageio.imread('images/convolution_cat.png')
-print(np.shape(correct))
-plt.figure()
-plt.subplot(1, 3, 1)
-plt.imshow(correct)
-plt.title('Correct')
-plt.subplot(1, 3, 2)
-plt.imshow(out1)
-plt.title('Max abs diff {}'.format(np.max(np.abs(correct-out1))))
-plt.subplot(1, 3, 3)
-plt.imshow(out2)
-plt.title('Max abs diff {}'.format(np.max(np.abs(correct-out2))))
-plt.show()
+# img = imageio.imread('images/cat.png').astype(np.float64)
+#
+# kernel = np.arange(25).reshape((5, 5))
+#
+# start = time.time()
+# out1 = convolution_loops(img, kernel)
+# print('Calculation time with inner loops:', time.time()-start, 'sec')
+#
+# start= time.time()
+# out2 = convolution(img, kernel)
+# print('Calculation time without inner loops:', time.time()-start, 'sec')
+#
+# out1 -= out1.min()
+# out1 /= out1.max()
+# out1 *= 255
+# out1 = out1.astype(np.uint8)
+#
+# out2 -= out2.min()
+# out2 /= out2.max()
+# out2 *= 255
+# out2 = out2.astype(np.uint8)
+#
+# correct = imageio.imread('images/convolution_cat.png')
+# print(np.shape(correct))
+# plt.figure()
+# plt.subplot(1, 3, 1)
+# plt.imshow(correct)
+# plt.title('Correct')
+# plt.subplot(1, 3, 2)
+# plt.imshow(out1)
+# plt.title('Max abs diff {}'.format(np.max(np.abs(correct-out1))))
+# plt.subplot(1, 3, 3)
+# plt.imshow(out2)
+# plt.title('Max abs diff {}'.format(np.max(np.abs(correct-out2))))
+# plt.show()
 
 
 
@@ -122,26 +122,26 @@ def blur_filter(image):
 
 
 # Check that your blurring implementation is correct.
-img = imageio.imread('images/cat.png').astype(np.float64)
-
-start = time.time()
-out = blur_filter(img)
-print('Calculation time:', time.time()-start, 'sec')
-
-out -= out.min()
-out /= out.max()
-out *= 255
-out = out.astype(np.uint8)
-
-correct = imageio.imread('images/blur_cat.png')
-plt.figure()
-plt.subplot(1, 2, 1)
-plt.imshow(correct)
-plt.title('Correct')
-plt.subplot(1, 2, 2)
-plt.imshow(out)
-plt.title('Max abs diff {}'.format(np.max(np.abs(correct-out))))
-plt.show()
+# img = imageio.imread('images/cat.png').astype(np.float64)
+#
+# start = time.time()
+# out = blur_filter(img)
+# print('Calculation time:', time.time()-start, 'sec')
+#
+# out -= out.min()
+# out /= out.max()
+# out *= 255
+# out = out.astype(np.uint8)
+#
+# correct = imageio.imread('images/blur_cat.png')
+# plt.figure()
+# plt.subplot(1, 2, 1)
+# plt.imshow(correct)
+# plt.title('Correct')
+# plt.subplot(1, 2, 2)
+# plt.imshow(out)
+# plt.title('Max abs diff {}'.format(np.max(np.abs(correct-out))))
+# plt.show()
 
 
 def gradient_magnitude(img):
