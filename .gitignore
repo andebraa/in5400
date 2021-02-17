@@ -8,3 +8,6 @@
 */*.ipynb
 *.zip
 */*.zip
+*.png
+*/*.png
+*/*/*.ipybn
