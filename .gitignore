@@ -10,7 +10,7 @@
 */*.zip
 *.png
 */*.png
-*/*/*.ipybn
+*/*/*.ipynb
 */*/*.pyc 
 */*.pyc
 *.pyc
