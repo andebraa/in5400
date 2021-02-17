@@ -11,3 +11,7 @@
 *.png
 */*.png
 */*/*.ipybn
+*/*/*.pyc 
+*/*.pyc
+*.pyc
+
