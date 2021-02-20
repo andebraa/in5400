@@ -3,7 +3,7 @@
 */data/*
 */*.csv
 *.pdf 
-*.ipybn
+*.ipynb
 */*.pdf
 */*.ipynb
 *.zip
