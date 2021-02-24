@@ -124,14 +124,12 @@ def run_epoch(model, epoch, data_loader, optimizer, loss_fct, is_training, confi
                 handles=[]
                 outputpath= './tmp/'
 
-                ###YOURCODEHERE
+
                 for ind, (name, module) in enumerate(model.named_modules()):
                     filestub = name+'_'+str(batch_idx)+'_'+name
                     hook = hook_factory(outputpath, filestub)
                     handles.append(module.register_backward_hook(hook))
-                # iterate over model.named_modules()
-                # create a filename using outputpath, batch index and cnn module name
-                #register backward hook from the hook factory for every convolution module
+
 
             prediction = model(images)
             loss        = loss_fct(prediction, labels)
