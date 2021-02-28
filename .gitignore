@@ -20,4 +20,5 @@
 */*.png
 */*/*.png
 *.jpg
-*/*.jpg 
+*/*.jpg
+./mandatory_1/prelimcode/data/VOC2012/* 
