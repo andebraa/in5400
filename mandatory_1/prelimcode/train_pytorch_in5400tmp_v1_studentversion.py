@@ -28,7 +28,10 @@ from typing import Callable, Optional
 class dataset_voc(Dataset):
     def __init__(self, root_dir, trvaltest, transform=None):
 
-        self.root_dir = root_dir
+        self.root_dir = root_dir #data/VOC2012/imageSets/Main
+        self.data_inst = PascalVOC(root_dir)
+        self.categories = self.data_inst.list_image_sets()
+        print(self.categories)
 
         self.transform = transform
         self.imgfilenames=[]
@@ -37,7 +40,7 @@ class dataset_voc(Dataset):
 
         if trvaltest==0:
             #load training data
-            file = open("./102flowersn/flowers_data/trainfile.txt")
+            file = open(root_dir + "/trainfile.txt")
             path = "./102flowersn/flowers_data/jpg/"
             for i, line in enumerate(file):
                 image = line.split()[0]
@@ -79,6 +82,7 @@ class dataset_voc(Dataset):
     def __getitem__(self, idx):
         #TODO your code here
 
+
         sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
 
         return sample
@@ -93,6 +97,7 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
     losses = []
     for batch_idx, data in enumerate(trainloader):
         #TODO
+        pass
 
     return np.mean(losses)
 
@@ -142,7 +147,7 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
 
     for c in range(numcl):
-        avgprecs[c]= #TODO
+        avgprecs[c]= 0#TODO
 
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
@@ -191,9 +196,10 @@ class yourloss(nn.modules.loss._Loss):
 
     def __init__(self, reduction: str = 'mean') -> None:
         #TODO
+        pass
 
     def forward(self, input_: Tensor, target: Tensor) -> Tensor:
-
+        pass
         #TODO
         return loss
 
@@ -243,14 +249,14 @@ def runstuff():
 
     #datasets
     image_datasets={}
-    image_datasets['train']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=0, transform=data_transforms['train'])
-    image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/VOCdevkit/VOC2012/',trvaltest=1, transform=data_transforms['val'])
+    image_datasets['train']=dataset_voc(root_dir='data/VOC2012/ImageSets/Main',trvaltest=0, transform=data_transforms['train'])
+    image_datasets['val']=dataset_voc(root_dir='data/VOC2012/ImageSets/Main',trvaltest=1, transform=data_transforms['val'])
 
     #dataloaders
     #TODO use num_workers=1
     dataloaders = {}
-    dataloaders['train'] = #
-    dataloaders['val'] = #
+    dataloaders['train'] = 0#
+    dataloaders['val'] = 0#
 
 
     #device
@@ -262,7 +268,7 @@ def runstuff():
 
     #model
     #TODO
-    model = #pretrained resnet18
+    model = model.resnet18#pretrained resnet18
     #overwrite last linear layer
 
     model = model.to(device)
@@ -272,11 +278,11 @@ def runstuff():
 
     #TODO
     # Observe that all parameters are being optimized
-    someoptimizer = #
+    someoptimizer = 0#
 
     # Decay LR by a factor of 0.3 every X epochs
     #TODO
-    somelr_scheduler = #
+    somelr_scheduler = 0#
 
     best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
 
