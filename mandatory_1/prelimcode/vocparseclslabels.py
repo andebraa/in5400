@@ -70,7 +70,7 @@ class PascalVOC:
 
 if __name__=='__main__':
 
-    pv=PascalVOC('./data/VOC2012/')
+    pv=PascalVOC('./data/VOC2012/') 
 
     cat_name='bus'
     dataset='val'

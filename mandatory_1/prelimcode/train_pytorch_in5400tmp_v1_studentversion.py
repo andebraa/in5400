@@ -40,35 +40,39 @@ class dataset_voc(Dataset):
 
         if trvaltest==0:
             #load training data
-            file = open(root_dir + "/trainfile.txt")
-            path = "./102flowersn/flowers_data/jpg/"
-            for i, line in enumerate(file):
-                image = line.split()[0]
-                flower = int(line.split()[1])
-                self.imgfilenames.append(path + image)
-                self.labels.append(flower)
+            file = open(self.root_dir +'train.txt')
+            path = self.root_dir
+            dataset='train'
+
+            ls = pv._imgs_from_category(cat_name, dataset)
+            cat = pv.list_image_sets()
+
+            self.labels = np.zeros((len(ls['true']), len(cat)))
+
+            for i, category in enumerate(cat):
+                ls = pv._imgs_from_category(category, dataset)
+                ls['true'] = ls['true'].ge(0)
+                self.labels[:,i] += ls['true'].values
+                self.imagefilenames.append(ls['filename'].values)
             file.close()
         elif trvaltest==1:
             #load validation data
-            file = open("./102flowersn/flowers_data/valfile.txt")
-            path = "./102flowersn/flowers_data/jpg/"
-            for i, line in enumerate(file):
-                image = line.split()[0]
-                flower = int(line.split()[1])
-                self.imgfilenames.append(path + image)
-                self.labels.append(flower)
+            file = open(self.root_dir +'train.txt')
+            path = self.root_dir
+            dataset='val'
+
+            ls = pv._imgs_from_category(cat_name, dataset)
+            cat = pv.list_image_sets()
+
+            self.labels = np.zeros((len(ls['true']), len(cat)))
+
+            for i, category in enumerate(cat):
+                ls = pv._imgs_from_category(category, dataset)
+                ls['true'] = ls['true'].ge(0)
+                self.labels[:,i] += ls['true'].values
+                self.imagefilenames.append(ls['filename'].values)
             file.close()
-        elif trvaltest==2:
-            #load test data
-            file = open("./102flowersn/flowers_data/testfile.txt")
-            path = "./102flowersn/flowers_data/jpg/"
-            for i, line in enumerate(file):
-                image = line.split()[0]
-                flower = int(line.split()[1])
-                self.imgfilenames.append(path + image)
-                self.labels.append(flower)
-            file.close()
-        #TODO
+
         else:
             #TODO: print some error + exit() or an exception
             raise ValueError('init error')
@@ -82,6 +86,9 @@ class dataset_voc(Dataset):
     def __getitem__(self, idx):
         #TODO your code here
 
+        filename = self.imgfilenames[idx]
+        image = PIL.Image.open(filename)
+        label = self.labels[idx]
 
         sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
 
@@ -94,10 +101,25 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
     #TODO
     #model.train() or model.eval() ?
 
-    losses = []
+    model.train() # IMPORTANT
+
+    losses = list()
     for batch_idx, data in enumerate(trainloader):
-        #TODO
-        pass
+        #TODO trains the model
+        inputs=data[0].to(device)
+        labels=data[1].to(device)
+
+
+        optimizer.zero_grad()
+
+        output = model(inputs)
+
+        #Note may have to apply squeeze here
+        loss = criterion(output.squeeze(1), labels)
+        loss.backward()
+        optimizer.step()
+
+        losses.append(loss.item())
 
     return np.mean(losses)
 
@@ -274,7 +296,7 @@ def runstuff():
     model = model.to(device)
 
 
-    lossfct = yourloss()
+    lossfct = BCEWithLogitsLoss()
 
     #TODO
     # Observe that all parameters are being optimized
