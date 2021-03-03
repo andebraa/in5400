@@ -86,6 +86,5 @@ if __name__=='__main__':
     for i, category in enumerate(cat):
         ls = pv._imgs_from_category(category, dataset)
         ls['true'] = ls['true'].ge(0)
-        print(ls['true'])
         bool[:,i] += ls['true'].values
     print(bool)
