@@ -65,14 +65,27 @@ class PascalVOC:
             list of srings: all filenames from that category
         """
         df = self._imgs_from_category(cat_name, dataset)
-        df = df[df['true'] == 1]
+        #df = df[df['true'] == 1]
         return df['filename'].values
 
 if __name__=='__main__':
 
     pv=PascalVOC('./data/VOC2012/')
 
-    cat_name='car'
+    cat_name='bus'
     dataset='val'
-    ls=pv.imgs_from_category_as_list(cat_name, dataset)
-    print(len(ls),ls[0])
+    #ls=pv.imgs_from_category_as_list(cat_name, dataset)
+    ls = pv._imgs_from_category(cat_name, dataset)
+    #print(ls)
+    print(len(ls['true']))
+    ls['true'] = ls['true'].ge(0)
+
+    cat = pv.list_image_sets()
+    bool = np.zeros((len(ls['true']), len(cat)))
+    print(bool)
+    for i, category in enumerate(cat):
+        ls = pv._imgs_from_category(category, dataset)
+        ls['true'] = ls['true'].ge(0)
+        print(ls['true'])
+        bool[:,i] += ls['true'].values
+    print(bool)
