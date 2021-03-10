@@ -3,12 +3,13 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim import lr_scheduler
+from torch.optim.lr_scheduler import StepLR
 
 
 import torchvision
 from torchvision import datasets, models, transforms, utils
 from torch.utils.data import Dataset, DataLoader
+from torch.nn.modules import BCEWithLogitsLoss
 #import matplotlib.pyplot as plt
 
 from torch import Tensor
@@ -16,6 +17,7 @@ from torch import Tensor
 import time
 import os
 import numpy as np
+import pandas as pd
 
 import PIL.Image
 import sklearn.metrics
@@ -29,52 +31,58 @@ class dataset_voc(Dataset):
     def __init__(self, root_dir, trvaltest, transform=None):
 
         self.root_dir = root_dir #data/VOC2012/imageSets/Main
+        print(root_dir)
         self.data_inst = PascalVOC(root_dir)
         self.categories = self.data_inst.list_image_sets()
         print(self.categories)
 
         self.transform = transform
-        self.imgfilenames=[]
-        self.labels=[]
 
+        pv = PascalVOC(self.root_dir)
 
         if trvaltest==0:
             #load training data
-            file = open(self.root_dir +'train.txt')
-            path = self.root_dir
-            dataset='train'
+            dataset = 'train'
 
-            ls = pv._imgs_from_category(cat_name, dataset)
             cat = pv.list_image_sets()
 
-            self.labels = np.zeros((len(ls['true']), len(cat)))
-
+            filename = self.root_dir + '/train.txt'
+            df = pd.read_csv(filename,
+                             delim_whitespace=True,
+                             header = None,
+                             names = ['filename']
+                             )
+            self.imgfilenames = df['filename'].values
+            self.labels = np.zeros((len(self.imgfilenames), len(pv.list_image_sets())))
             for i, category in enumerate(cat):
                 ls = pv._imgs_from_category(category, dataset)
                 ls['true'] = ls['true'].ge(0)
                 self.labels[:,i] += ls['true'].values
-                self.imagefilenames.append(ls['filename'].values)
+
             file.close()
         elif trvaltest==1:
             #load validation data
-            file = open(self.root_dir +'train.txt')
-            path = self.root_dir
-            dataset='val'
+            pv=PascalVOC('./data/VOC2012/')
 
-            ls = pv._imgs_from_category(cat_name, dataset)
+            dataset = 'test'
             cat = pv.list_image_sets()
-
+            df = pd.read_csv(filename,
+                             delim_whitespace = True,
+                             header = None,
+                             names = ['filename']
+                             )
+            self.imgfilenames = df['filename'].values
             self.labels = np.zeros((len(ls['true']), len(cat)))
 
             for i, category in enumerate(cat):
                 ls = pv._imgs_from_category(category, dataset)
                 ls['true'] = ls['true'].ge(0)
                 self.labels[:,i] += ls['true'].values
-                self.imagefilenames.append(ls['filename'].values)
+                self.imgfilenames = ls['filename'].values
             file.close()
 
         else:
-            #TODO: print some error + exit() or an exception
+
             raise ValueError('init error')
 
 
@@ -84,10 +92,13 @@ class dataset_voc(Dataset):
         return len(self.imgfilenames)
 
     def __getitem__(self, idx):
-        #TODO your code here
 
         filename = self.imgfilenames[idx]
-        image = PIL.Image.open(filename)
+        path = os.path.join(self.root_dir, filename, '.jpg')
+
+        print(filename)
+        print(type(filename))
+        image = PIL.Image.fromarray(filename)#.convert('RGB')
         label = self.labels[idx]
 
         sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
@@ -169,7 +180,9 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
 
     for c in range(numcl):
-        avgprecs[c]= 0#TODO
+        avgprecs[c]= sklearn.metrics.average_precision_score(concat_labels[c],
+                                                             concat_score[c],
+                                                             average = None)
 
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
@@ -214,16 +227,16 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
 
 
 
-class yourloss(nn.modules.loss._Loss):
-
-    def __init__(self, reduction: str = 'mean') -> None:
-        #TODO
-        pass
-
-    def forward(self, input_: Tensor, target: Tensor) -> Tensor:
-        pass
-        #TODO
-        return loss
+# class yourloss(nn.modules.loss._Loss):
+#
+#     def __init__(self, reduction: str = 'mean') -> None:
+#         #TODO
+#         pass
+#
+#     def forward(self, input_: Tensor, target: Tensor) -> Tensor:
+#         pass
+#         #TODO
+#         return loss
 
 
 
@@ -277,8 +290,8 @@ def runstuff():
     #dataloaders
     #TODO use num_workers=1
     dataloaders = {}
-    dataloaders['train'] = 0#
-    dataloaders['val'] = 0#
+    dataloaders['train'] = torch.utils.data.DataLoader(image_datasets['train'], batch_size = 8, shuffle=True)
+    dataloaders['val'] = torch.utils.data.DataLoader(image_datasets['val'], batch_size = 32, shuffle=False)
 
 
     #device
@@ -290,23 +303,33 @@ def runstuff():
 
     #model
     #TODO
-    model = model.resnet18#pretrained resnet18
+    model = models.resnet18()#pretrained resnet18
     #overwrite last linear layer
-
+    # num_ftrs = model.fc.in_features
+    # model.fc = nn.Linear(num_ftrs, numcl)
+    # model.fc.reset_parameters()
     model = model.to(device)
-
 
     lossfct = BCEWithLogitsLoss()
 
-    #TODO
     # Observe that all parameters are being optimized
-    someoptimizer = 0#
+
+    someoptimizer = optim.SGD(model.parameters(), lr=config['lr'], momentum=0)#
+    somelr_scheduler = StepLR(someoptimizer,1, gamma=0.3)
 
     # Decay LR by a factor of 0.3 every X epochs
     #TODO
     somelr_scheduler = 0#
 
-    best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
+    best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'],
+                                                                                                      dataloaders['val'] ,
+                                                                                                      model ,
+                                                                                                      lossfct,
+                                                                                                      someoptimizer,
+                                                                                                      somelr_scheduler,
+                                                                                                      num_epochs= config['maxnumepochs'],
+                                                                                                      device = device ,
+                                                                                                      numcl = config['numcl'] )
 
 
 
