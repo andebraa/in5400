@@ -34,7 +34,6 @@ class dataset_voc(Dataset):
         print(root_dir)
         self.data_inst = PascalVOC(root_dir)
         self.categories = self.data_inst.list_image_sets()
-        print(self.categories)
 
         self.transform = transform
 
@@ -46,7 +45,7 @@ class dataset_voc(Dataset):
 
             cat = pv.list_image_sets()
 
-            filename = self.root_dir + '/train.txt'
+            filename = self.root_dir + 'ImageSets/Main/'+dataset+'.txt'
             df = pd.read_csv(filename,
                              delim_whitespace=True,
                              header = None,
@@ -59,27 +58,28 @@ class dataset_voc(Dataset):
                 ls['true'] = ls['true'].ge(0)
                 self.labels[:,i] += ls['true'].values
 
-            file.close()
+
         elif trvaltest==1:
             #load validation data
             pv=PascalVOC('./data/VOC2012/')
-
-            dataset = 'test'
+            dataset = 'val'
             cat = pv.list_image_sets()
+            filename = self.root_dir + 'ImageSets/Main/'+dataset+'.txt'
+
             df = pd.read_csv(filename,
                              delim_whitespace = True,
                              header = None,
                              names = ['filename']
                              )
             self.imgfilenames = df['filename'].values
-            self.labels = np.zeros((len(ls['true']), len(cat)))
+            self.labels = np.zeros((len(self.imgfilenames), len(pv.list_image_sets())))
 
             for i, category in enumerate(cat):
                 ls = pv._imgs_from_category(category, dataset)
                 ls['true'] = ls['true'].ge(0)
                 self.labels[:,i] += ls['true'].values
                 self.imgfilenames = ls['filename'].values
-            file.close()
+
 
         else:
 
@@ -94,13 +94,15 @@ class dataset_voc(Dataset):
     def __getitem__(self, idx):
 
         filename = self.imgfilenames[idx]
-        path = os.path.join(self.root_dir, filename, '.jpg')
+        path = self.root_dir + 'JPEGImages/' +filename +'.jpg'
+        print(path)
 
-        print(filename)
-        print(type(filename))
-        image = PIL.Image.fromarray(filename)#.convert('RGB')
+        image = PIL.Image.open(path).convert('RGB')
+        if self.transform:
+            image = self.transform(image)
+
         label = self.labels[idx]
-
+        #image = np.array(image)
         sample = {'image': image, 'label': label, 'filename': self.imgfilenames[idx]}
 
         return sample
@@ -117,8 +119,8 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
     losses = list()
     for batch_idx, data in enumerate(trainloader):
         #TODO trains the model
-        inputs=data[0].to(device)
-        labels=data[1].to(device)
+        inputs=data['image'].to(device)
+        labels=data['label'].to(device)
 
 
         optimizer.zero_grad()
@@ -126,7 +128,7 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
         output = model(inputs)
 
         #Note may have to apply squeeze here
-        loss = criterion(output.squeeze(1), labels)
+        loss = criterion(output, labels)
         loss.backward()
         optimizer.step()
 
@@ -163,17 +165,21 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
             outputs = model(inputs)
 
             labels = data['label']
+            fnames.append(data['filename'])
 
             loss = criterion(outputs, labels.to(device) )
             losses.append(loss.item())
 
             #this was an accuracy computation
-            #cpuout= outputs.to('cpu')
-            #_, preds = torch.max(cpuout, 1)
-            #labels = labels.float()
-            #corrects = torch.sum(preds == labels.data)
-            #accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
-            #curcount+= labels.shape[0]
+            cpuout= outputs.to('cpu')
+            _, preds = torch.max(cpuout, 1)
+            labels = labels.float()
+            corrects = torch.sum(preds == labels.data)
+            accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + \
+                       corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
+            curcount+= labels.shape[0]
+
+            concat_pred[batch_idx]
 
             #TODO: collect scores, labels, filenames
 
@@ -204,23 +210,25 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
         avgloss=train_epoch(model,  dataloader_train,  criterion,  device , optimizer )
         trainlosses.append(avgloss)
 
-    if scheduler is not None:
-        scheduler.step()
+        if scheduler is not None:
+            scheduler.step()
 
-    perfmeasure, testloss,concat_labels, concat_pred, fnames  = evaluate_meanavgprecision(model, dataloader_test, criterion, device, numcl)
-    testlosses.append(testloss)
-    testperfs.append(perfmeasure)
+        perfmeasure, testloss,concat_labels, concat_pred, fnames  = evaluate_meanavgprecision(model, dataloader_test, criterion, device, numcl)
+        testlosses.append(testloss)
+        testperfs.append(perfmeasure)
 
-    print('at epoch: ', epoch,' classwise perfmeasure ', perfmeasure)
+        print('at epoch: ', epoch,' classwise perfmeasure ', perfmeasure)
 
-    avgperfmeasure = np.mean(perfmeasure)
-    print('at epoch: ', epoch,' avgperfmeasure ', avgperfmeasure)
+        avgperfmeasure = np.mean(perfmeasure)
+        print('at epoch: ', epoch,' avgperfmeasure ', avgperfmeasure)
 
-    if avgperfmeasure > best_measure: #higher is better or lower is better?
-        bestweights= model.state_dict()
-        #TODO track current best performance measure and epoch
+        if avgperfmeasure > best_measure: #higher is better or lower is better?
+            bestweights= model.state_dict()
 
-        #TODO save your scores
+            best_measure = avgperfmeasure
+            best_epoch = epoch
+
+            #TODO save your scores
 
     return best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs
 
@@ -284,14 +292,20 @@ def runstuff():
 
     #datasets
     image_datasets={}
-    image_datasets['train']=dataset_voc(root_dir='data/VOC2012/ImageSets/Main',trvaltest=0, transform=data_transforms['train'])
-    image_datasets['val']=dataset_voc(root_dir='data/VOC2012/ImageSets/Main',trvaltest=1, transform=data_transforms['val'])
+    image_datasets['train']=dataset_voc(root_dir='data/VOC2012/',trvaltest=0, transform=data_transforms['train'])
+    image_datasets['val']=dataset_voc(root_dir='data/VOC2012/',trvaltest=1, transform=data_transforms['val'])
 
     #dataloaders
     #TODO use num_workers=1
     dataloaders = {}
-    dataloaders['train'] = torch.utils.data.DataLoader(image_datasets['train'], batch_size = 8, shuffle=True)
-    dataloaders['val'] = torch.utils.data.DataLoader(image_datasets['val'], batch_size = 32, shuffle=False)
+    dataloaders['train'] = torch.utils.data.DataLoader(image_datasets['train'],
+                                                       batch_size = 8,
+                                                       shuffle=True,
+                                                       num_workers=1)
+    dataloaders['val'] = torch.utils.data.DataLoader(image_datasets['val'],
+                                                     batch_size = 32,
+                                                     shuffle=False,
+                                                     num_workers=1)
 
 
     #device
@@ -305,9 +319,9 @@ def runstuff():
     #TODO
     model = models.resnet18()#pretrained resnet18
     #overwrite last linear layer
-    # num_ftrs = model.fc.in_features
-    # model.fc = nn.Linear(num_ftrs, numcl)
-    # model.fc.reset_parameters()
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, config['numcl'])
+    model.fc.reset_parameters()
     model = model.to(device)
 
     lossfct = BCEWithLogitsLoss()
