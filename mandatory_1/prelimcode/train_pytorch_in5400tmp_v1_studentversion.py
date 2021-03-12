@@ -84,8 +84,8 @@ class dataset_voc(Dataset):
         else:
 
             raise ValueError('init error')
-        self.imgfilenames = self.imgfilenames[0:5]
-        self.labels = self.labels[0:5]
+        self.imgfilenames = self.imgfilenames[0:10]
+        self.labels = self.labels[0:10]
 
 
 
@@ -149,11 +149,12 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
     curcount = 0
     accuracy = 0
     print(model)
-    num_files = len(dataloader[0])
+    #num_files = len(dataloader[0])
+    concat_pred = np.zeros((numcl,0))
+    concat_labels = np.zeros((numcl,0))
+    #concat_pred=[np.empty(shape=(0)) for _ in range(numcl)] #prediction scores for each class. each numpy array is a list of scores. one score per image
+    #concat_labels=[np.empty(shape=(0)) for _ in range(numcl)] #labels scores for each class. each numpy array is a list of labels. one label per image
 
-
-    concat_pred=[np.empty(shape=(0)) for _ in range(numcl)] #prediction scores for each class. each numpy array is a list of scores. one score per image
-    concat_labels=[np.empty(shape=(0)) for _ in range(numcl)] #labels scores for each class. each numpy array is a list of labels. one label per image
     avgprecs=np.zeros(numcl) #average precision for each class
     fnames = [] #filenames as they come out of the dataloader
 
@@ -170,29 +171,38 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
             labels = data['label']
             fnames.append(data['filename'])
+            print(np.shape(outputs))
+            print(np.shape(labels))
+            np.append(concat_pred, outputs, axis=1)
+            np.append(concat_labels, labels, axis=1)
+
 
             loss = criterion(outputs, labels.to(device) )
             losses.append(loss.item())
 
             #this was an accuracy computation
-            cpuout= outputs.to('cpu')
-            _, preds = torch.max(cpuout, 1)
-            labels = labels.float()
-            corrects = torch.sum(preds == labels.data)
-            accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + \
-                       corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
-            curcount+= labels.shape[0]
+            # cpuout= outputs.to('cpu')
+            # _, preds = torch.max(cpuout, 1)
+            # labels = labels.float()
+            # corrects = torch.sum(preds == labels.data)
+            # accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + \
+            #            corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
+            # curcount+= labels.shape[0]
 
-            concat_pred[batch_idx]
+
 
             #TODO: collect scores, labels, filenames
 
 
 
-    for c in range(numcl):
-        avgprecs[c]= sklearn.metrics.average_precision_score(concat_labels[c],
-                                                             concat_score[c],
-                                                             average = None)
+    #for c in range(numcl):
+    concat_pred = np.array(concat_pred)
+    concat_labels = np.array(concat_labels)
+    print(concat_pred)
+    print(concat_labels)
+    avgprecs= sklearn.metrics.average_precision_score(concat_labels,
+                                                      concat_pred,
+                                                      average = None)
 
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
