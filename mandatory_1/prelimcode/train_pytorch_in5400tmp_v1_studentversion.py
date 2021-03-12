@@ -84,6 +84,8 @@ class dataset_voc(Dataset):
         else:
 
             raise ValueError('init error')
+        self.imgfilenames = self.imgfilenames[0:5]
+        self.labels = self.labels[0:5]
 
 
 
@@ -140,13 +142,15 @@ def train_epoch(model,  trainloader,  criterion, device, optimizer ):
 
 def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
-    #TODO
-    #model.train() or model.eval() ?
+    model.eval()
 
 
 
-    #curcount = 0
-    #accuracy = 0
+    curcount = 0
+    accuracy = 0
+    print(model)
+    num_files = len(dataloader[0])
+
 
     concat_pred=[np.empty(shape=(0)) for _ in range(numcl)] #prediction scores for each class. each numpy array is a list of scores. one score per image
     concat_labels=[np.empty(shape=(0)) for _ in range(numcl)] #labels scores for each class. each numpy array is a list of labels. one label per image
@@ -333,7 +337,6 @@ def runstuff():
 
     # Decay LR by a factor of 0.3 every X epochs
     #TODO
-    somelr_scheduler = 0#
 
     best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'],
                                                                                                       dataloaders['val'] ,
