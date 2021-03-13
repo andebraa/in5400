@@ -84,8 +84,7 @@ class dataset_voc(Dataset):
         else:
 
             raise ValueError('init error')
-        self.imgfilenames = self.imgfilenames[0:10]
-        self.labels = self.labels[0:10]
+
 
 
 
@@ -97,7 +96,6 @@ class dataset_voc(Dataset):
 
         filename = self.imgfilenames[idx]
         path = self.root_dir + 'JPEGImages/' +filename +'.jpg'
-        print(path)
 
         image = PIL.Image.open(path).convert('RGB')
         if self.transform:
@@ -148,12 +146,9 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
     curcount = 0
     accuracy = 0
-    print(model)
-    #num_files = len(dataloader[0])
-    concat_pred = np.zeros((numcl,0))
-    concat_labels = np.zeros((numcl,0))
-    #concat_pred=[np.empty(shape=(0)) for _ in range(numcl)] #prediction scores for each class. each numpy array is a list of scores. one score per image
-    #concat_labels=[np.empty(shape=(0)) for _ in range(numcl)] #labels scores for each class. each numpy array is a list of labels. one label per image
+
+    concat_pred = np.zeros((0,numcl))
+    concat_labels = np.zeros((0,numcl))
 
     avgprecs=np.zeros(numcl) #average precision for each class
     fnames = [] #filenames as they come out of the dataloader
@@ -171,10 +166,8 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
             labels = data['label']
             fnames.append(data['filename'])
-            print(np.shape(outputs))
-            print(np.shape(labels))
-            np.append(concat_pred, outputs, axis=1)
-            np.append(concat_labels, labels, axis=1)
+            concat_pred = np.append(concat_pred, outputs, axis=0)
+            concat_labels = np.append(concat_labels, labels, axis=0)
 
 
             loss = criterion(outputs, labels.to(device) )
@@ -198,8 +191,6 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
     #for c in range(numcl):
     concat_pred = np.array(concat_pred)
     concat_labels = np.array(concat_labels)
-    print(concat_pred)
-    print(concat_labels)
     avgprecs= sklearn.metrics.average_precision_score(concat_labels,
                                                       concat_pred,
                                                       average = None)
@@ -211,6 +202,7 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
 
     best_measure = 0
     best_epoch =-1
+    bestweights = {}
 
     trainlosses=[]
     testlosses=[]
@@ -273,7 +265,7 @@ def runstuff():
     config['lr']=0.005
     config['batchsize_train'] = 16
     config['batchsize_val'] = 64
-    config['maxnumepochs'] = 35
+    config['maxnumepochs'] = 1
 
     config['scheduler_stepsize']=10
     config['scheduler_factor']=0.3
