@@ -166,11 +166,11 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
             labels = data['label']
             fnames.append(data['filename'])
-            concat_pred = np.append(concat_pred, outputs, axis=0)
-            concat_labels = np.append(concat_labels, labels, axis=0)
+            concat_pred = np.append(concat_pred, outputs.cpu().numpy(), axis=0)
+            concat_labels = np.append(concat_labels, labels.cpu().numpy(), axis=0)
 
 
-            loss = criterion(outputs, labels.to(device) )
+            loss = criterion(outputs.cpu().numpy(), labels.to(device) )
             losses.append(loss.item())
 
             #this was an accuracy computation
@@ -235,6 +235,7 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
             best_epoch = epoch
 
             #TODO save your scores
+            torch.save(bestweights, 'my_net.pt')
 
     return best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs
 
@@ -316,7 +317,7 @@ def runstuff():
 
     #device
     if True == config['use_gpu']:
-        device= torch.device('cuda:0')
+        device= torch.device('cuda')
 
     else:
         device= torch.device('cpu')
