@@ -10,7 +10,7 @@ import torchvision
 from torchvision import datasets, models, transforms, utils
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.modules import BCEWithLogitsLoss
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from torch import Tensor
 
@@ -170,7 +170,7 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
             concat_labels = np.append(concat_labels, labels.cpu().numpy(), axis=0)
 
 
-            loss = criterion(outputs.cpu().numpy(), labels.to(device) )
+            loss = criterion(outputs, labels.to(device) )
             losses.append(loss.item())
 
             #this was an accuracy computation
@@ -199,7 +199,8 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
 
 def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterion, optimizer, scheduler, num_epochs, device, numcl):
-
+    global avg_prec
+    avg_prec = np.zeros(numcl) 
     best_measure = 0
     best_epoch =-1
     bestweights = {}
@@ -227,8 +228,9 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
 
         avgperfmeasure = np.mean(perfmeasure)
         print('at epoch: ', epoch,' avgperfmeasure ', avgperfmeasure)
+        avg_prec[epoch] = avgperfmeasure
 
-        if avgperfmeasure > best_measure: #higher is better or lower is better?
+        if avgperfmeasure > best_measure:
             bestweights= model.state_dict()
 
             best_measure = avgperfmeasure
@@ -236,22 +238,13 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
 
             #TODO save your scores
             torch.save(bestweights, 'my_net.pt')
+            np.save('concat_pred.npy', concat_pred)
+    np.save('concat_labels.npy',concat_labels)
+    np.save('perfmeasure.npy',perfmeasure)
+    np.save('testloss.npy',testloss)
+    np.save('fnames.npy',fnames)
 
-    return best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs
-
-
-
-
-# class yourloss(nn.modules.loss._Loss):
-#
-#     def __init__(self, reduction: str = 'mean') -> None:
-#         #TODO
-#         pass
-#
-#     def forward(self, input_: Tensor, target: Tensor) -> Tensor:
-#         pass
-#         #TODO
-#         return loss
+    return best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs, avg_prec
 
 
 
@@ -273,7 +266,7 @@ def runstuff():
 
 
 
-    # kind of a dataset property
+    # dataset property
     config['numcl']=20
 
 
@@ -341,7 +334,7 @@ def runstuff():
     # Decay LR by a factor of 0.3 every X epochs
     #TODO
 
-    best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'],
+    best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs, avg_prec = traineval2_model_nocv(dataloaders['train'],
                                                                                                       dataloaders['val'] ,
                                                                                                       model ,
                                                                                                       lossfct,
@@ -351,7 +344,9 @@ def runstuff():
                                                                                                       device = device ,
                                                                                                       numcl = config['numcl'] )
 
-
+    print(f'best epoch: {best_epoch}, best_measure: {best_measure}, trainlosses: {trainlosses}, testlosses: {testlosses}')
+    plt.plot(avg_prec)
+    plt.show()
 
 ###########
 # for part2
@@ -608,4 +603,4 @@ def test_WSconversion():
 
 if __name__=='__main__':
 
-  runstuff()
+    runstuff()
