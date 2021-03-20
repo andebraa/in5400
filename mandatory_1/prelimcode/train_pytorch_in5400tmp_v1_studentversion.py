@@ -173,22 +173,6 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
             loss = criterion(outputs, labels.to(device) )
             losses.append(loss.item())
 
-            #this was an accuracy computation
-            # cpuout= outputs.to('cpu')
-            # _, preds = torch.max(cpuout, 1)
-            # labels = labels.float()
-            # corrects = torch.sum(preds == labels.data)
-            # accuracy = accuracy*( curcount/ float(curcount+labels.shape[0]) ) + \
-            #            corrects.float()* ( curcount/ float(curcount+labels.shape[0]) )
-            # curcount+= labels.shape[0]
-
-
-
-            #TODO: collect scores, labels, filenames
-
-
-
-    #for c in range(numcl):
     concat_pred = np.array(concat_pred)
     concat_labels = np.array(concat_labels)
     avgprecs= sklearn.metrics.average_precision_score(concat_labels,
@@ -235,8 +219,6 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
 
             best_measure = avgperfmeasure
             best_epoch = epoch
-
-            #TODO save your scores
             torch.save(bestweights, 'my_net.pt')
             np.save('concat_pred.npy', concat_pred)
     np.save('concat_labels.npy',concat_labels)

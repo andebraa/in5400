@@ -31,12 +31,9 @@ class_preds = np.load('../data/scores/concat_pred.npy')
 filenames = np.load('../data/scores/filenames.npy', allow_pickle = True)
 filenames = list(np.concatenate(filenames).flat)
 
-classes = ['aeroplane', 'bicycle', 'bird', 'boat',
-'bottle', 'bus', 'car', 'cat', 'chair',
-'cow', 'diningtable', 'dog', 'horse',
-'motorbike', 'person', 'pottedplant',
-'sheep', 'sofa', 'train',
-'tvmonitor']
+classes = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car',
+'cat', 'chair','cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person',
+'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
 
 
 
@@ -155,7 +152,6 @@ def main():
     #print(class_preds_i)
 
     files = [os.path.join(ROOT_FOLDER_IMAGES, f + '.jpg') for f in class_files]
-    files.sort()
 
     t_win = make_thumbnails(files)
     offset, currently_displaying = display_images(t_win, 0, files)
@@ -185,7 +181,6 @@ def main():
             class_files = np.flip(class_files)
 
             files = [os.path.join(ROOT_FOLDER_IMAGES, f + '.jpg') for f in class_files]
-            files.sort()
 
             offset = 0
             offset, currently_displaying = display_images(t_win, offset, files)
@@ -194,8 +189,6 @@ def main():
             offset, currently_displaying = display_images(t_win, offset, files)
         elif event == '-PREV-' or event.endswith('Up'):
             offset -= THUMBNAILS_PER_PAGE[0]*THUMBNAILS_PER_PAGE[1]*2
-            if offset < 0:
-                offset = 0
             offset, currently_displaying = display_images(t_win, offset, files)
 
 
