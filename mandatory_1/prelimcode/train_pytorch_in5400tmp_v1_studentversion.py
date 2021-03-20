@@ -184,7 +184,7 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
 def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterion, optimizer, scheduler, num_epochs, device, numcl):
     global avg_prec
-    avg_prec = np.zeros(numcl) 
+    avg_prec = np.zeros(numcl)
     best_measure = 0
     best_epoch =-1
     bestweights = {}
@@ -241,7 +241,7 @@ def runstuff():
     config['lr']=0.005
     config['batchsize_train'] = 16
     config['batchsize_val'] = 64
-    config['maxnumepochs'] = 1
+    config['maxnumepochs'] = 2
 
     config['scheduler_stepsize']=10
     config['scheduler_factor']=0.3
@@ -299,7 +299,7 @@ def runstuff():
 
     #model
     #TODO
-    model = models.resnet18()#pretrained resnet18
+    model = models.resnet18(pretrained=True)#pretrained resnet18
     #overwrite last linear layer
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, config['numcl'])
@@ -328,7 +328,7 @@ def runstuff():
 
     print(f'best epoch: {best_epoch}, best_measure: {best_measure}, trainlosses: {trainlosses}, testlosses: {testlosses}')
     plt.plot(avg_prec)
-    plt.show()
+    plt.savefig('avg_prec.png')
 
 ###########
 # for part2
