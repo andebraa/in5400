@@ -4,6 +4,7 @@ from PIL import Image
 import io
 import base64
 import os
+import numpy as np
 
 """
     Using PIL with PySimpleGUI
@@ -15,12 +16,28 @@ import os
 THUMBNAIL_SIZE = (200,200)
 IMAGE_SIZE = (800,800)
 THUMBNAIL_PAD = (1,1)
-ROOT_FOLDER = r'/home/anders/Documents/in5400/mandatory_1/data/VOC2012/JPEGImages'
+ROOT_FOLDER_IMAGES = r'../data/VOC2012/JPEGImages'
+ROOT_FOLDER_TEXTFILES = r'../data/scores/' #r'../data/scores/concat_pred.npy'
+
+
+
 
 screen_size = sg.Window.get_screen_size()
 thumbs_per_row = int(screen_size[0]/(THUMBNAIL_SIZE[0]+THUMBNAIL_PAD[0])) - 1
 thumbs_rows = int(screen_size[1]/(THUMBNAIL_SIZE[1]+THUMBNAIL_PAD[1])) - 1
 THUMBNAILS_PER_PAGE = (thumbs_per_row, thumbs_rows)
+
+class_preds = np.load('../data/scores/concat_pred.npy')
+filenames = np.load('../data/scores/filenames.npy', allow_pickle = True)
+filenames = list(np.concatenate(filenames).flat)
+
+classes = ['aeroplane', 'bicycle', 'bird', 'boat',
+'bottle', 'bus', 'car', 'cat', 'chair',
+'cow', 'diningtable', 'dog', 'horse',
+'motorbike', 'person', 'pottedplant',
+'sheep', 'sofa', 'train',
+'tvmonitor']
+
 
 
 def make_square(im, min_size=256, fill_color=(0, 0, 0, 0)):
@@ -89,8 +106,12 @@ def make_thumbnails(flist):
         layout += [row_layout]
     layout += [[sg.B(sg.SYMBOL_LEFT + ' Prev', size=(10,3), k='-PREV-'),
               sg.B('Next '+sg.SYMBOL_RIGHT, size=(10,3), k='-NEXT-'),
-              sg.B('Exit', size=(10,3)),
-              sg.B('aeroplane')]]
+              sg.B('Exit', size=(10,3)), sg.B('aeroplane'), sg.B('bicycle'),
+              sg.B('bird'), sg.B('boat'), sg.B('bottle'), sg.B('bus'), sg.B('car'),
+              sg.B('cat'), sg.B('chair'), sg.B('cow'), sg.B('diningtable'),
+              sg.B('dog'), sg.B('horse'), sg.B('motorbike'), sg.B('person'),
+              sg.B('pottedplant'), sg.B('sheep'), sg.B('sofa'), sg.B('train'),
+              sg.B('tvmonitor'),]]
 
     return sg.Window('Thumbnails', layout, element_padding=(0, 0), margins=(0, 0),\
            finalize=True, grab_anywhere=False, location=(0,0), return_keyboard_events=True)
@@ -127,10 +148,18 @@ def display_images(t_win, offset, files):
 
 
 def main():
-    files = [os.path.join(ROOT_FOLDER, f) for f in os.listdir(ROOT_FOLDER) if True in [f.endswith(e) for e in EXTS]]
+    class_preds_i = class_preds[:,0]
+    class_preds_i, class_files = zip(*sorted(zip(class_preds_i, filenames)))
+    class_files = np.flip(class_files)
+    #print(class_files)
+    #print(class_preds_i)
+
+    files = [os.path.join(ROOT_FOLDER_IMAGES, f + '.jpg') for f in class_files]
     files.sort()
+
     t_win = make_thumbnails(files)
     offset, currently_displaying = display_images(t_win, 0, files)
+
     # offset = THUMBNAILS_PER_PAGE[0] * THUMBNAILS_PER_PAGE[1]
     # currently_displaying = {}
     while True:
@@ -146,7 +175,18 @@ def main():
             display_image_window(currently_displaying.get(event))
             continue
 
-        if event == 'aeroplane':
+        if event in classes:
+            print(event)
+            indx = classes.index(event)
+            print(indx)
+            class_preds_i = class_preds[:, indx]
+            print(class_preds)
+            class_preds_i, class_files = zip(*sorted(zip(class_preds_i, filenames)))
+            class_files = np.flip(class_files)
+
+            files = [os.path.join(ROOT_FOLDER_IMAGES, f + '.jpg') for f in class_files]
+            files.sort()
+
             offset = 0
             offset, currently_displaying = display_images(t_win, offset, files)
 
