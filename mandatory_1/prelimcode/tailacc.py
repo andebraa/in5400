@@ -13,6 +13,7 @@ def tailacc(t):
 
     #NOTE! sigmoid really pushes some values way down. is it really okay to do this?
     preds = sigmoid(preds) #force predictions withing [0,1]
+    print(preds)
     threshold_mask = preds < t #making mask of values lESS THAN THRESHOLD
     preds[threshold_mask] = 0
     preds[np.logical_not(threshold_mask)]= 1 #all things not 0 is now 1
@@ -23,6 +24,8 @@ def tailacc(t):
     return np.average(val/norm)
 
 tailacc = np.vectorize(tailacc)
-t = np.linspace(0,1,50)
+t = np.linspace(0,1,80)
 plt.plot(t,tailacc(t))
+plt.xlabel('threshold')
+plt.ylabel('tailacc ')
 plt.show()
