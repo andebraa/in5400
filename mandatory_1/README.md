@@ -26,4 +26,5 @@ mandatory1
     ├── synset_words.txt
     
     ├── train_pytorch_in5400tmp_v1_studentversion.py
+    
     └── vocparseclslabels.py
