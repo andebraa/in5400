@@ -12,12 +12,20 @@ Dependencies shouldn't be nothing out of the ordinary.
 
 
 mandatory1
+
 .
 └── prelimcode
+
     ├── data
+    
     │   ├── archive
+    
     │   └── VOC2012
+    
     ├── getimagenetclasses.py
+    
     ├── synset_words.txt
+    
     ├── train_pytorch_in5400tmp_v1_studentversion.py
+    
     └── vocparseclslabels.py
