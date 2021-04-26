@@ -16,26 +16,26 @@ class imageCaptionModel(nn.Module):
 
         Returns:
             self.Embedding  : An instance of nn.Embedding, shape[vocabulary_size, embedding_size]
-            self.inputlayer : An instance of nn.Linear, shape[number_of_cnn_features, hidden_state_sizes]
+            self.inputlayer : An instance of nn.Linear, shape[number_of_cnn_features, hidden_state_size]
             self.rnn        : An instance of RNN
-            self.outputlayer: An instance of nn.Linear, shape[hidden_state_sizes, vocabulary_size]
+            self.outputlayer: An instance of nn.Linear, shape[hidden_state_size, vocabulary_size]
         """
         self.config = config
         self.vocabulary_size        = config['vocabulary_size']
         self.embedding_size         = config['embedding_size']
         self.number_of_cnn_features = config['number_of_cnn_features']
-        self.hidden_state_sizes     = config['hidden_state_sizes']
+        self.hidden_state_size      = config['hidden_state_size']
         self.num_rnn_layers         = config['num_rnn_layers']
         self.cell_type              = config['cellType']
 
-
-        # ToDo
+        #vocabulary is the number of classes or 'words' the model knows
+        # Embedding is essentially just compressing the one-hot vectors to a more managable size
         self.Embedding = nn.Embedding(self.vocabulary_size, self.embedding_size)
 
 
 
-        #TODO 1 linear layer, with what output size?
-        self.outputlayer = None #nn.Linear(self.hidden_state_sizes, )
+        # nn linear takes (in_features, out_features)
+        self.outputlayer = nn.linear(self.hidden_state_size, self.vocabulary_size) #nn.Linear(self.hidden_state_size, )
         self.nnmapsize = 512 # the output size for the image features after the processing via self.inputLayer
         #TODO
         self.inputlayer = nn.sequential(nn.dropout(0,25),
@@ -54,10 +54,10 @@ class imageCaptionModel(nn.Module):
             print( 'unsupported combi: True == self.simplifiedrnn and self.config[num_rnn_layers] !=1',self.config['num_rnn_layers']  )
             exit()
 
-            self.rnn = RNN_onelayer_simplified(input_size=self.embedding_size  + self.nnmapsize , hidden_state_size=self.hidden_state_sizes)
+            self.rnn = RNN_onelayer_simplified(input_size=self.embedding_size  + self.nnmapsize , hidden_state_size=self.hidden_state_size)
 
         else:
-            self.rnn = RNN(input_size=self.embedding_size  + self.nnmapsize , hidden_state_size=self.hidden_state_sizes, num_rnn_layers=self.num_rnn_layers, cell_type=self.cell_type)
+            self.rnn = RNN(input_size=self.embedding_size  + self.nnmapsize , hidden_state_size=self.hidden_state_size, num_rnn_layers=self.num_rnn_layers, cell_type=self.cell_type)
 
 
         return
@@ -69,14 +69,14 @@ class imageCaptionModel(nn.Module):
             xTokens             : Shape[batch_size, truncated_backprop_length]
             is_train            : "is_train" is a flag used to select whether or not to use estimated token as input
             current_hidden_state: If not None, "current_hidden_state" should be passed into the rnn module
-                                  shape[num_rnn_layers, batch_size, hidden_state_sizes]
+                                  shape[num_rnn_layers, batch_size, hidden_state_size]
 
         Returns:
             logits              : Shape[batch_size, truncated_backprop_length, vocabulary_size]
-            current_hidden_state: shape[num_rnn_layers, batch_size, hidden_state_sizes]
+            current_hidden_state: shape[num_rnn_layers, batch_size, hidden_state_size]
         """
         # ToDO
-        # Get "initial_hidden_state" shape[num_rnn_layers, batch_size, hidden_state_sizes].
+        # Get "initial_hidden_state" shape[num_rnn_layers, batch_size, hidden_state_size].
         # Remember that each rnn cell needs its own initial state.
 
         #print(cnn_features.shape)
@@ -85,7 +85,11 @@ class imageCaptionModel(nn.Module):
 
 
         if current_hidden_state is None:
-            #TODO
+            if self.cell_type == 'RNN' or self.cell_type == 'GRU':
+                self.initial_hidden_state = torch.zeros(1,self.hidden_state_size)
+            elif self.cell_type =='LSTM':
+                self.initial_hidden_state = torch.zeros(self.num_rnn_layers, self.batch_size, 2*self.hidden_state_size)
+
             # initialize initial_hidden_state=  with correct dims, depends on cellyupe
 
         else:
@@ -160,7 +164,7 @@ class RNN_onelayer_simplified(nn.Module):
 
 
         # Produce outputs
-        logits        = torch.stack(logits_series, dim=1)
+        logits = torch.stack(logits_series, dim=1)
 
         return logits, current_state
 
@@ -207,7 +211,7 @@ class RNN(nn.Module):
         Returns:
             logits        : The predicted logits. shape[batch_size, truncated_backprop_length, vocabulary_size]
             current_state : The hidden state from the last iteration (in time/words).
-                            Shape[num_rnn_layers, batch_size, hidden_state_sizes]
+                            Shape[num_rnn_layers, batch_size, hidden_state_size]
         """
         if is_train==True:
             seqLen = xTokens.shape[1] #truncated_backprop_length
@@ -262,25 +266,25 @@ class GRUCell(nn.Module):
             inputSize: Integer defining the number of input features to the rnn
 
         Returns:
-            self.weight_u: A nn.Parametere with shape [hidden_state_sizes+inputSize, hidden_state_sizes]. Initialized using
+            self.weight_u: A nn.Parametere with shape [hidden_state_size+inputSize, hidden_state_size]. Initialized using
                            variance scaling with zero mean.
 
-            self.weight_r: A nn.Parametere with shape [hidden_state_sizes+inputSize, hidden_state_sizes]. Initialized using
+            self.weight_r: A nn.Parametere with shape [hidden_state_size+inputSize, hidden_state_size]. Initialized using
                            variance scaling with zero mean.
 
-            self.weight: A nn.Parametere with shape [hidden_state_sizes+inputSize, hidden_state_sizes]. Initialized using
+            self.weight: A nn.Parametere with shape [hidden_state_size+inputSize, hidden_state_size]. Initialized using
                          variance scaling with zero mean.
 
-            self.bias_u: A nn.Parameter with shape [1, hidden_state_sizes]. Initialized to zero.
+            self.bias_u: A nn.Parameter with shape [1, hidden_state_size]. Initialized to zero.
 
-            self.bias_r: A nn.Parameter with shape [1, hidden_state_sizes]. Initialized to zero.
+            self.bias_r: A nn.Parameter with shape [1, hidden_state_size]. Initialized to zero.
 
-            self.bias: A nn.Parameter with shape [1, hidden_state_sizes]. Initialized to zero.
+            self.bias: A nn.Parameter with shape [1, hidden_state_size]. Initialized to zero.
 
         Tips:
             Variance scaling:  Var[W] = 1/n
         """
-        self.hidden_state_sizes = hidden_state_size
+        self.hidden_state_size = hidden_state_size
 
         # TODO:
         self.weight_u = None
@@ -297,10 +301,10 @@ class GRUCell(nn.Module):
         """
         Args:
             x: tensor with shape [batch_size, inputSize]
-            state_old: tensor with shape [batch_size, hidden_state_sizes]
+            state_old: tensor with shape [batch_size, hidden_state_size]
 
         Returns:
-            state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_sizes]
+            state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_size]
 
         """
         # TODO:
@@ -317,10 +321,10 @@ class RNNsimpleCell(nn.Module):
             inputSize: Integer defining the number of input features to the rnn
 
         Returns:
-            self.weight: A nn.Parameter with shape [hidden_state_sizes+inputSize, hidden_state_sizes]. Initialized using
+            self.weight: A nn.Parameter with shape [hidden_state_size+inputSize, hidden_state_size]. Initialized using
                          variance scaling with zero mean.
 
-            self.bias: A nn.Parameter with shape [1, hidden_state_sizes]. Initialized to zero.
+            self.bias: A nn.Parameter with shape [1, hidden_state_size]. Initialized to zero.
 
         Tips:
             Variance scaling:  Var[W] = 1/n
@@ -336,10 +340,10 @@ class RNNsimpleCell(nn.Module):
         """
         Args:
             x: tensor with shape [batch_size, inputSize]
-            state_old: tensor with shape [batch_size, hidden_state_sizes]
+            state_old: tensor with shape [batch_size, hidden_state_size]
 
         Returns:
-            state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_sizes]
+            state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_size]
 
         """
         x2 = torch.cat((x, state_old), dim=1)
@@ -384,10 +388,10 @@ class LSTMCell(nn.Module):
         """
         Args:
             x: tensor with shape [batch_size, inputSize]
-            state_old: tensor with shape [batch_size, 2*hidden_state_sizes]
+            state_old: tensor with shape [batch_size, 2*hidden_state_size]
 
         Returns:
-            state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_sizes]
+            state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_size]
 
         """
         # TODO:
