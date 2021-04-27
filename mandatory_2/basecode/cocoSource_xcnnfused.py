@@ -35,11 +35,11 @@ class imageCaptionModel(nn.Module):
 
 
         # nn linear takes (in_features, out_features)
-        self.outputlayer = nn.linear(self.hidden_state_size, self.vocabulary_size) #nn.Linear(self.hidden_state_size, )
+        self.outputlayer = nn.Linear(self.hidden_state_size, self.vocabulary_size) #nn.Linear(self.hidden_state_size, )
         self.nnmapsize = 512 # the output size for the image features after the processing via self.inputLayer
         #TODO
         self.inputlayer = nn.sequential(nn.dropout(0,25),
-                                        nn.linear(),
+                                        nn.Linear(),
                                         nn.LeakyReLU())
 
 
@@ -86,9 +86,9 @@ class imageCaptionModel(nn.Module):
 
         if current_hidden_state is None:
             if self.cell_type == 'RNN' or self.cell_type == 'GRU':
-                self.initial_hidden_state = torch.zeros(1,self.hidden_state_size)
+                initial_hidden_state = torch.zeros(1,self.hidden_state_size)
             elif self.cell_type =='LSTM':
-                self.initial_hidden_state = torch.zeros(self.num_rnn_layers, self.batch_size, 2*self.hidden_state_size)
+                initial_hidden_state = torch.zeros(self.num_rnn_layers, self.batch_size, 2*self.hidden_state_size)
 
             # initialize initial_hidden_state=  with correct dims, depends on cellyupe
 
@@ -436,11 +436,11 @@ def loss_fn(logits, yTokens, yWeights):
 ##########################################################################################################
 if __name__ == '__main__':
 
-    lossDict = {'logits': logits,
-                'yTokens': yTokens,
-                'yWeights': yWeights,
-                'sumLoss': sumLoss,
-                'meanLoss': meanLoss
-    }
-
-    sumLoss, meanLoss = loss_fn(logits, yTokens, yWeights)
+    # lossDict = {'logits': logits,
+    #             'yTokens': yTokens,
+    #             'yWeights': yWeights,
+    #             'sumLoss': sumLoss,
+    #             'meanLoss': meanLoss
+    # }
+    #
+    # sumLoss, meanLoss = loss_fn(logits, yTokens, yWeights)

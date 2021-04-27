@@ -57,14 +57,14 @@ if __name__ == '__main__':
     }
 
     config = {
-        'optimizer': 'adamW',  # 'SGD' | 'adam' | 'RMSprop' | 'adamW' 
+        'optimizer': 'adamW',  # 'SGD' | 'adam' | 'RMSprop' | 'adamW'
         'learningRate': {'lr': 0.001},  # learning rate to the optimizer
         'weight_decay': 0.00001,  # weight_decay value
         'number_of_cnn_features': 2048,  # Fixed, do not change
         'embedding_size': 300,  # word embedding size
         'vocabulary_size': 10000,  # number of different words
         'truncated_backprop_length': 25,
-        'hidden_state_sizes': 512,  #
+        'hidden_state_size': 512,  #
         'num_rnn_layers': 1,  # number of stacked rnn's
         'scheduler_milestones': [75,90], #45,70 end at 80? or 60, 80
         'scheduler_factor': 0.2, #+0.25 dropout
