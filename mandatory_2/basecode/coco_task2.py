@@ -43,7 +43,7 @@ class imageCaptionModel(nn.Module):
                                         nn.LeakyReLU())
 
 
-        self.simplifiedrnn = True
+        self.simplifiedrnn = False
 
         if True == self.simplifiedrnn:
             if self.cell_type !='RNN':
