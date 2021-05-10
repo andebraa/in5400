@@ -36,7 +36,8 @@ def main(config, modelParam):
 
 ########################################################################################################################
 if __name__ == '__main__':
-    data_dir = '../../data/coco/'
+    print('data file needs to be set manualy in Excersice file')
+    data_dir = '../../../data/coco/'
 
     #train
     modelParam = {
@@ -48,7 +49,7 @@ if __name__ == '__main__':
         'data_dir': data_dir,  # data directory
         'img_dir': 'loss_images_test/',
         'modelsDir': 'storedModels_test/',
-        'modelName': 'model_0/',  # name of your trained model
+        'modelName': 'model0/',  # name of your trained model
         'restoreModelLast': 0,
         'restoreModelBest': 0,
         'modeSetups': [['train', True], ['val', True]],

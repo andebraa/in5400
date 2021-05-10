@@ -32,15 +32,18 @@ class imageCaptionModel(nn.Module):
         # Embedding is essentially just compressing the one-hot vectors to a more managable size
         self.Embedding = nn.Embedding(self.vocabulary_size, self.embedding_size)
 
-
-
-        # nn linear takes (in_features, out_features)
-        self.outputlayer = nn.Linear(self.hidden_state_size, self.vocabulary_size) #nn.Linear(self.hidden_state_size, )
-        self.nnmapsize = 512 # the output size for the image features after the processing via self.inputLayer
-        #TODO
-        self.inputlayer = nn.Sequential(nn.Dropout(0,25),
-                                        nn.Linear(self.number_of_cnn_features, self.nnmapsize),
-                                        nn.LeakyReLU())
+        self.outputlayer = nn.Linear(self.hidden_state_size, self.vocabulary_size)
+        self.nnmapsize = 512 
+        
+        self.inputlayer = nn.Sequential(nn.Dropout(0.25),
+                                        nn.Conv1d(in_channels=self.number_of_cnn_features,
+                                                  out_channels=self.nnmapsize,
+                                                  kernel_size = 1,
+                                                  stride = 1,
+                                                  padding=0),
+                                        nn.BatchNorm1d(self.nnmapsize),
+                                        nn.LeakyReLU(negative_slope=0.01))
+                                        
 
 
         self.simplifiedrnn = False
@@ -58,7 +61,11 @@ class imageCaptionModel(nn.Module):
 
         else:
             print('cunt')
-            self.rnn = RNN(input_size=self.embedding_size  + self.nnmapsize , hidden_state_size=self.hidden_state_size, num_rnn_layers=self.num_rnn_layers, cell_type=self.cell_type)
+            self.rnn = RNN(input_size=self.embedding_size  + self.nnmapsize , 
+                           hidden_state_size=self.hidden_state_size,
+                           last_layer_state_size=self.hidden_state_size+10,
+                           num_rnn_layers=self.num_rnn_layers, 
+                           cell_type=self.cell_type)
 
 
         return
@@ -76,13 +83,8 @@ class imageCaptionModel(nn.Module):
             logits              : Shape[batch_size, truncated_backprop_length, vocabulary_size]
             current_hidden_state: shape[num_rnn_layers, batch_size, hidden_state_size]
         """
-        # ToDO
-        # Get "initial_hidden_state" shape[num_rnn_layers, batch_size, hidden_state_size].
-        # Remember that each rnn cell needs its own initial state.
 
-        #print(cnn_features.shape)
-
-        imgfeat_processed = self.inputlayer(cnn_features)
+        imgfeat_processed = self.inputlayer(cnn_features.transpose(1,2))
 
 
         if current_hidden_state is None:
@@ -90,7 +92,7 @@ class imageCaptionModel(nn.Module):
             if self.cell_type == 'RNN' or self.cell_type == 'GRU':
                 initial_hidden_state = torch.zeros((self.num_rnn_layers, batch_size, self.hidden_state_size), device=xTokens.device)
             elif self.cell_type =='LSTM':
-                initial_hidden_state = torch.zeros((self.num_rnn_layers, self.batch_size, 2*self.hidden_state_size), device=xTokens.device)
+                initial_hidden_state = torch.zeros((self.num_rnn_layers, batch_size, 2*self.hidden_state_size), device=xTokens.device)
 
             # initialize initial_hidden_state=  with correct dims, depends on cellyupe
 
@@ -98,7 +100,12 @@ class imageCaptionModel(nn.Module):
             initial_hidden_state = current_hidden_state
 
         # use self.rnn to calculate "logits" and "current_hidden_state"
-        logits, current_hidden_state_out = self.rnn(xTokens, imgfeat_processed , initial_hidden_state, self.outputlayer, self.Embedding, is_train)
+        logits, current_hidden_state_out = self.rnn(xTokens, 
+                                                    imgfeat_processed , 
+                                                    initial_hidden_state, 
+                                                    self.outputlayer, 
+                                                    self.Embedding, 
+                                                    is_train)
 
         return logits, current_hidden_state_out
 
@@ -135,20 +142,14 @@ class RNN_onelayer_simplified(nn.Module):
         for kk in range(seqLen):
             updatedstate = torch.zeros_like(current_state, device=xTokens.device)
 
-            # this is for a one-layer RNN
-            # in a 2 layer rnn you have to iterate here through the 2 layers
-            # and input at each layer the correct input ,
-            # the input at higher layers will be the hidden state from the layer below
-            #TODO
+            
+            
             lvl0input = torch.cat((baseimgfeat, tokens_vector), dim=1)
-            #note that      current_state has 3 dims ( ...len(current_state.shape)==3... ) with first dimension having only 1 element, while the rnn cell needs a state with 2 dims as input
-            #TODO
-            updatedstate[0,:] = self.cells[0].forward(lvl0input, current_state.squeeze(0))  #RNN cell is used here #uses lvl0input and the hiddenstate
+            
 
-            # for a 2 layer rnn you do this for every kk, but you do this when you are *at the last layer of the rnn* for the current sequence index kk
-            # apply the output layer to the updated state
+            updatedstate[0,:] = self.cells[0].forward(lvl0input, current_state.squeeze(0))  
             logitskk = outputlayer(updatedstate[0,:]) #note: for LSTM you use only the part which corresponds to the hidden state
-            # find the next predicted output element
+            
             tokens = torch.argmax(logitskk, dim=1)
             logits_series.append(logitskk)
 
@@ -161,6 +162,7 @@ class RNN_onelayer_simplified(nn.Module):
             if kk < seqLen - 1:
                 if is_train == True:
                     tokens_vector = embed_input_vec[:,kk+1,:]
+
                 elif is_train == False:
                     tokens_vector = Embedding(tokens)
 
@@ -172,7 +174,12 @@ class RNN_onelayer_simplified(nn.Module):
 
 
 class RNN(nn.Module):
-    def __init__(self, input_size, hidden_state_size, num_rnn_layers, cell_type='GRU'):
+    def __init__(self, 
+                 input_size, 
+                 hidden_state_size, 
+                 last_layer_state_size, 
+                 num_rnn_layers, 
+                 cell_type='GRU'):
         super(RNN, self).__init__()
         """
         Args:
@@ -186,22 +193,35 @@ class RNN(nn.Module):
         """
         self.input_size        = input_size
         self.hidden_state_size = hidden_state_size
+        self.last_layer_state_size = last_layer_state_size
         self.num_rnn_layers    = num_rnn_layers
         self.cell_type         = cell_type
 
 
-        #TODO
+
         input_size_list = []
-        # input_size_list should have a length equal to the number of layers and input_size_list[i] should contain the input size for layer i
-
-       #TODO
-        # Your task is to create a list (self.cells) of type "nn.ModuleList" and populated it with cells of type "self.cell_type" - depending on the number of rnn layers
-        self.cells = None
-
+        input_size_list.append(input_size)
+        
+        input_size_list.append(last_layer_state_size)
+        self.cells = nn.ModuleList([]) #append layers to this depending on if gru or lstm
+        
+        for i in range(num_rnn_layers):
+            if self.cell_type == 'GRU':
+                self.cells.append(GRUCell(self.hidden_state_size, input_size_list[i]))
+            elif self.cell_type == 'RNN':
+                self.cells.append(RNNsimpleCell(self.hidden_state_size, input_size_list[i]))
+            elif self.cell_type == 'LSTM':
+                self.cells.append(LSTMCell(self.hidden_state_size, input_size_list[i]))
         return
 
 
-    def forward(self, xTokens, baseimgfeat, initial_hidden_state, outputLayer, Embedding, is_train=True):
+    def forward(self, 
+                xTokens, 
+                baseimgfeat, 
+                initial_hidden_state, 
+                outputLayer, 
+                Embedding, 
+                is_train=True):
         """
         Args:
             xTokens:        shape [batch_size, truncated_backprop_length]
@@ -221,43 +241,47 @@ class RNN(nn.Module):
             seqLen = 40 #Max sequence length to be generated
 
 
-        # While iterate through the (stacked) rnn, it may be easier to use lists instead of indexing the tensors.
-        # You can use "list(torch.unbind())" and "torch.stack()" to convert from pytorch tensor to lists and back again.
-
-
-        # get input embedding vectors
-        embed_input_vec = Embedding(input=xTokens ) #.clone())    #(batch, seq, feature = 300)
-        #print(embed_input_vec.shape)
-        #exit()
-        tokens_vector = embed_input_vec[:,0,:] #dim: (batch,  feature ) # the first input sequence element
+        embed_input_vec = Embedding(input=xTokens )
+        tokens_vector = embed_input_vec[:,0,:]
 
         # Use for loops to run over "seqLen" and "self.num_rnn_layers" to calculate logits
         logits_series = []
+        tokens = 0
+        logits = 0
 
         #current_state = list(torch.unbind(initial_hidden_state, dim=0))
         current_state = initial_hidden_state
+        pool_init = nn.MaxPool1d(10,stride=1) 
+        pooledbaseimgfeat = pool_init(baseimgfeat)
+        
         for kk in range(seqLen):
-            updatedstate=torch.zeros_like(current_state)
+            updatedstate=torch.zeros_like(current_state, device=xTokens.device)
+            lvl0input = torch.cat((pooledbaseimgfeat.squeeze(dim=-1), tokens_vector),dim=1)
 
-            # TODO
-            # you need to:
-            #create your lvl0input,
-            #update the hidden cell state for every layer with inputs depending on the layer index
-            # if you are at the last layer, then produce logitskk, tokens , run a             logits_series.append(logitskk), see the simplified rnn for the one layer version
+            model_input = lvl0input
+            
+            updatedstate[0,:] =  self.cells[0].forward(model_input, current_state[0])
+            
+            model_input = torch.cat((updatedstate[0,:,:self.hidden_state_size].close(), attentionlayer(updatedstate[0,:])), dim=1)
 
-
-            current_state=updatedstate
+            updatedstate[1,:] = self.cells[1].forward(model_input, current_state[1])
+            
+            #only accepting lstm in this code
+            logits = outputLayer(updatedstate[-1,:, self.hidden_state_size:])
+            logits_series.append(logits)
+            tokens = torch.argmax(logits, dim=1)
+                
             if kk < seqLen - 1:
                 if is_train == True:
                     tokens_vector = embed_input_vec[:,kk+1,:]
                 elif is_train == False:
                     tokens_vector = Embedding(tokens)
 
-        # Produce outputs
-        logits        = torch.stack(logits_series, dim=1)
+      
+        logits= torch.stack(logits_series, dim=1)
         #current_state = torch.stack(current_state, dim=0)
         return logits, current_state
-
+ 
 ########################################################################################################################
 class GRUCell(nn.Module):
     def __init__(self, hidden_state_size, input_size):
@@ -288,15 +312,18 @@ class GRUCell(nn.Module):
         """
         self.hidden_state_size = hidden_state_size
 
-        # TODO:
-        self.weight_u = None
-        self.bias_u   = None
+        
+        self.weight_u = nn.Parameter(torch.randn(input_size + hidden_state_size, hidden_state_size) / np.sqrt(input_size + hidden_state_size))
+        self.bias_u   = nn.Parameter(torch.zeros(1, hidden_state_size))
 
-        self.weight_r = None
-        self.bias_r   = None
 
-        self.weight = None
-        self.bias   = None
+        self.weight_r = nn.Parameter(torch.randn(input_size + hidden_state_size, hidden_state_size) / np.sqrt(input_size + hidden_state_size))
+        self.bias_r   = nn.Parameter(torch.zeros(1, hidden_state_size))
+
+
+        self.weight = nn.Parameter(torch.randn(input_size + hidden_state_size, hidden_state_size) / np.sqrt(input_size + hidden_state_size))
+        self.bias   = nn.Parameter(torch.zeros(1, hidden_state_size))
+
         return
 
     def forward(self, x, state_old):
@@ -309,8 +336,15 @@ class GRUCell(nn.Module):
             state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_size]
 
         """
-        # TODO:
-        state_new = None
+        
+        x2 = torch.cat((x, state_old), dim=1)
+        w_in = self.weight[:x.shape[1]]
+        w_hn = self.weight[x.shape[1]:]
+        
+        r = torch.sigmoid(torch.mm(x2,self.weight_r) + self.bias_r)
+        z = torch.sigmoid(torch.mm(x2,self.weight_u) + self.bias_u)
+        n = torch.tanh(torch.mm(x,w_in) + self.bias + r*(torch.mm(state_old, w_hn) + self.bias))
+        state_new = (1-z)*n + z*state_old
         return state_new
 
 ######################################################################################################################
@@ -369,20 +403,22 @@ class LSTMCell(nn.Module):
         Tips:
             Variance scaling:  Var[W] = 1/n
         """
-        self.hidden_state_size = hidden_state_size
+        self.hidden_state_size = hidden_state_size 
+        
+        self.weight_f = nn.Parameter(torch.randn(input_size + hidden_state_size, hidden_state_size) / np.sqrt(input_size + hidden_state_size))
+        self.bias_f  = nn.Parameter(torch.zeros(1, hidden_state_size))
 
-        # TODO:
-        self.weight_f = None
-        self.bias_f  = None
+        self.weight_i = nn.Parameter(torch.randn(input_size + hidden_state_size, hidden_state_size) / np.sqrt(input_size + hidden_state_size))
+        self.bias_i  = nn.Parameter(torch.zeros(1, hidden_state_size))
 
-        self.weight_i = None
-        self.bias_i  = None
 
-        self.weight_meminput = None
-        self.bias_meminput   = None
+        self.weight_meminput = nn.Parameter(torch.randn(input_size + hidden_state_size, hidden_state_size) / np.sqrt(input_size + hidden_state_size))
+        self.bias_meminput   = nn.Parameter(torch.zeros(1, hidden_state_size))
 
-        self.weight_o = None
-        self.bias_o   = None
+
+        self.weight_o = nn.Parameter(torch.randn(input_size + hidden_state_size, hidden_state_size) / np.sqrt(input_size + hidden_state_size))
+        self.bias_o   = nn.Parameter(torch.zeros(1, hidden_state_size))
+
 
         return
 
@@ -396,9 +432,30 @@ class LSTMCell(nn.Module):
             state_new: The updated hidden state of the recurrent cell. Shape [batch_size, hidden_state_size]
 
         """
-        # TODO:
-        state_new     = None
+        #i,f,g,o: input, forget, cell, output gate
+        # mem_input: g 
 
+        #concatinate again, or nah?
+        #weight W_xi in lstm torch documentation is just weight_i ? or slicing?
+        mem_cell = state_old[:, self.hidden_state_size:] #tensor contains hidden state and memory cell
+        hidden_state = state_old[:, :self.hidden_state_size]
+        
+        x2 = torch.cat((x,hidden_state), dim=1)
+        
+        w_i = self.weight_i; w_f = self.weight_f; 
+        w_g = self.weight_meminput; w_o = self.weight_o
+        
+        b_o = self.bias_o; b_f = self.bias_f; 
+        b_i = self.bias_i; b_g = self.bias_meminput
+ 
+        it = torch.sigmoid(torch.mm(x2, w_i) + b_i) 
+        ft = torch.sigmoid(torch.mm(x2, w_f) + b_f) 
+        gt = torch.tanh(torch.mm(x2, w_g) + b_g) 
+        ot = torch.sigmoid(torch.mm(x2, w_o) + b_o)
+        ct = ft*mem_cell + it*gt 
+        ht = ot*torch.tanh(ct) 
+        state_new = torch.cat((ht, ct), dim=1)
+             
         return state_new
 
 
@@ -427,13 +484,23 @@ def loss_fn(logits, yTokens, yWeights):
     logits   = logits.view(-1, logits.shape[2])
     yTokens  = yTokens.view(-1)
     yWeights = yWeights.view(-1)
-    losses   = F.cross_entropy(input=logits, target=yTokens, reduction='none')
+    losses   = F.cross_entropy(input=logits, target=yTokens, reduction='none') #logits error here
 
     sumLoss  = (losses*yWeights).sum()
     meanLoss = sumLoss / (yWeights.sum()+eps)
 
     return sumLoss, meanLoss
 
+class AttentionLayer(nn.Module):
+    def __init__(self, hidden_state_size):
+        super(AttentionLayer, self).__init__() #inherit attention layer init 
+        self.layer = nn.Sequential(nn.Dropout(0.25),
+                                   nn.Linear(2*hidden_state_size, 50),
+                                   nn.LeakyReLU(), #default 0.01
+                                   nn.Linear(50,10),
+                                   nn.Softmax(dim=-1))
+    def forward(self, x):
+        return self.attlayer(x)
 
 ##########################################################################################################
 if __name__ == '__main__':

@@ -58,6 +58,7 @@ def plotImagesAndCaptions(model, modelParam, config, dataLoader):
     print('\n')
     print('Generated caption')
     print(" ".join(sentence))
+    caption = " ".join(sentence)
     print('\n')
     print('Original captions:')
     for kk in range(len(dataDict['orig_captions'][batchInd])):
@@ -70,7 +71,8 @@ def plotImagesAndCaptions(model, modelParam, config, dataLoader):
     img = mpimg.imread(imgpath)
     plt.ion()
     ax.imshow(img)
-    plt.show()
+    ax.set_title(caption)
+    plt.savefig(dataDict['imgPaths'][batchInd])
     aa = 1
     return
 
